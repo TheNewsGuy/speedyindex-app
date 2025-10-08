@@ -1,1 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedyIndex - Press Release URL Indexer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .loader { border-top-color: #3b82f6; }
+        .loader-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center py-12 px-4">
+        <div class="max-w-md w-full">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <div class="text-center mb-8">
+                    <i class="fas fa-rocket text-5xl text-blue-600 mb-4"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">SpeedyIndex Login</h1>
+                    <p class="text-gray-600 mt-2">Please login to access the URL indexer</p>
+                </div>
+                
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-3 top-3 text-gray-400"></i>
+                            <input 
+                                type="text" 
+                                id="username" 
+                                required
+                                class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter your username"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3 top-3 text-gray-400"></i>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                required
+                                class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter your password"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div id="loginError" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span id="loginErrorText">Invalid username or password</span>
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Login
+                    </button>
+                </form>
+                
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <p class="text-sm text-gray-600 text-center">
+                        <i class="fas fa-shield-alt mr-1"></i>
+                        Secure access for authorized users only
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Main App (Hidden until login) -->
+    <div id="mainApp" class="hidden min-h-screen py-12 px-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center">
+                        <i class="fas fa-rocket text-3xl text-blue-600 mr-3"></i>
+                        <h1 class="text-3xl font-bold text-gray-900">SpeedyIndex URL Submitter</h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <i class="fas fa-user-circle"></i>
+                            <span id="currentUser">User</span>
+                        </div>
+                        <button id="logoutBtn" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="mb-6">
+                    <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors">
+                        <i class="fas fa-file-excel text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-lg text-gray-600 mb-2">Drop your press release Excel report here</p>
+                        <p class="text-sm text-gray-500 mb-4">or click to browse (URLs should be in column B)</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden" />
+                        <button class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Choose File
+                        </button>
+                    </div>
+                    
+                    <!-- File Info -->
+                    <div id="fileInfo" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-file-excel text-2xl text-green-600 mr-3"></i>
+                                <div>
+                                    <p id="fileName" class="font-medium text-gray-900"></p>
+                                    <p id="fileDetails" class="text-sm text-gray-600"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="text-red-600 hover:text-red-700">
+                                <i class="fas fa-times-circle text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Button -->
+                <button id="processBtn" disabled class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Submit to SpeedyIndex</span>
+                </button>
+
+                <!-- Progress Section -->
+                <div id="progressSection" class="hidden mt-8">
+                    <div class="bg-gray-100 rounded-lg p-6">
+                        <h3 class="font-semibold text-gray-900 mb-4">Processing Progress</h3>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span id="progressText" class="text-gray-600">Processing...</span>
+                                <span id="progressPercent" class="text-gray-600">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="progressBar" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="grid grid-cols-4 gap-4 text-center">
+                            <div class="bg-white rounded p-3">
+                                <p id="totalCount" class="text-2xl font-bold text-gray-900">0</p>
+                                <p class="text-sm text-gray-600">Total URLs</p>
+                            </div>
+                            <div class="bg-white rounded p-3">
+                                <p id="successCount" class="text-2xl font-bold text-green-600">0</p>
+                                <p class="text-sm text-gray-600">Successful</p>
+                            </div>
+                            <div class="bg-white rounded p-3">
+                                <p id="errorCount" class="text-2xl font-bold text-red-600">0</p>
+                                <p class="text-sm text-gray-600">Failed</p>
+                            </div>
+                            <div class="bg-white rounded p-3">
+                                <p id="creditsLeft" class="text-2xl font-bold text-blue-600">-</p>
+                                <p class="text-sm text-gray-600">Credits Left</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="hidden mt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-semibold text-gray-900">Results</h3>
+                        <button id="exportBtn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2">
+                            <i class="fas fa-download"></i>
+                            Export Results
+                        </button>
+                    </div>
+                    <div id="resultsList" class="max-h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+                        <!-- Results will be added here -->
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div id="successMessage" class="hidden mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                        <p class="text-green-800">Processing complete! Check the results above.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-blue-50 rounded-lg p-6">
+                <h2 class="font-semibold text-gray-900 mb-3 text-lg">
+                    <i class="fas fa-info-circle mr-2"></i>Quick Instructions
+                </h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-medium text-gray-800 mb-2">How to Use</h3>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li>• Upload your press release Excel report</li>
+                            <li>• URLs should be in column B</li>
+                            <li>• Click "Submit to SpeedyIndex"</li>
+                            <li>• Export results when complete</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-gray-800 mb-2">File Requirements</h3>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li>• Excel format (.xls or .xlsx)</li>
+                            <li>• URLs in Column B</li>
+                            <li>• Site names in Column A (optional)</li>
+                            <li>• Max 1000 URLs per file</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
+                    <p class="text-sm text-yellow-800">
+                        <strong>Support:</strong> If you encounter any issues, contact your administrator or check the SpeedyIndex dashboard for API status.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let selectedFile = null;
+        let extractedUrls = [];
+        let results = [];
+        let authToken = null;
+        let currentUsername = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if already logged in
+            const savedAuth = sessionStorage.getItem('speedyindex_auth');
+            if (savedAuth) {
+                const authData = JSON.parse(savedAuth);
+                authToken = authData.token;
+                currentUsername = authData.username;
+                showMainApp();
+            }
+
+            // Login form handler
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+            // App event listeners
+            document.getElementById('dropZone').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+            document.getElementById('removeFile').addEventListener('click', removeFile);
+            document.getElementById('processBtn').addEventListener('click', processUrls);
+            document.getElementById('exportBtn').addEventListener('click', exportResults);
+
+            // Drag and drop
+            const dropZone = document.getElementById('dropZone');
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-blue-400', 'bg-blue-50');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+                handleFileSelect({ target: { files: e.dataTransfer.files } });
+            });
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/.netlify/functions/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token;
+                    currentUsername = username;
+                    sessionStorage.setItem('speedyindex_auth', JSON.stringify({
+                        token: authToken,
+                        username: currentUsername
+                    }));
+                    document.getElementById('loginError').classList.add('hidden');
+                    showMainApp();
+                } else {
+                    document.getElementById('loginErrorText').textContent = data.error || 'Invalid username or password';
+                    document.getElementById('loginError').classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('loginErrorText').textContent = 'Connection error. Please try again.';
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            authToken = null;
+            currentUsername = null;
+            sessionStorage.removeItem('speedyindex_auth');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = currentUsername;
+        }
+
+        async function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.match(/\.(xlsx|xls)$/)) {
+                alert('Please upload an Excel file (.xlsx or .xls)');
+                return;
+            }
+
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileDetails').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+            document.getElementById('dropZone').classList.add('hidden');
+            document.getElementById('fileInfo').classList.remove('hidden');
+            document.getElementById('processBtn').disabled = false;
+
+            // Read and parse Excel file
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                    document.head.appendChild(script);
+                    
+                    script.onload = () => {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                        
+                        // Extract URLs from column B
+                        extractedUrls = [];
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (row[1] && row[1].toString().startsWith('http')) {
+                                extractedUrls.push({
+                                    site: row[0] || 'Unknown',
+                                    url: row[1].toString().trim()
+                                });
+                            }
+                        }
+                        
+                        document.getElementById('fileDetails').textContent = 
+                            `${(file.size / 1024).toFixed(1)} KB - ${extractedUrls.length} URLs found`;
+                    };
+                } catch (error) {
+                    console.error('Error reading file:', error);
+                    alert('Error reading Excel file. Please ensure URLs are in column B.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            extractedUrls = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('dropZone').classList.remove('hidden');
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+
+        async function processUrls() {
+            if (extractedUrls.length === 0) {
+                alert('No URLs found in the Excel file');
+                return;
+            }
+
+            // Show progress section
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('resultsList').innerHTML = '';
+            results = [];
+
+            // Update initial stats
+            document.getElementById('totalCount').textContent = extractedUrls.length;
+            document.getElementById('successCount').textContent = '0';
+            document.getElementById('errorCount').textContent = '0';
+
+            // Process URLs using Netlify function
+            try {
+                const response = await fetch('/.netlify/functions/process-excel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        urls: extractedUrls
+                    })
+                });
+
+                if (response.status === 401) {
+                    alert('Session expired. Please login again.');
+                    handleLogout();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to process URLs');
+                }
+
+                const data = await response.json();
+                results = data.results;
+
+                // Update UI with results
+                let successCount = 0;
+                let errorCount = 0;
+
+                results.forEach((result, index) => {
+                    if (result.status === 'success') successCount++;
+                    else errorCount++;
+
+                    // Update progress
+                    const progress = ((index + 1) / results.length) * 100;
+                    document.getElementById('progressBar').style.width = `${progress}%`;
+                    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
+                    document.getElementById('progressText').textContent = 
+                        `Processed ${index + 1} of ${results.length} URLs`;
+
+                    // Add to results list
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'flex items-center justify-between py-2 px-3 border-b hover:bg-white rounded';
+                    resultItem.innerHTML = `
+                        <div class="flex items-center gap-2 flex-1">
+                            <i class="fas ${result.status === 'success' ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'}"></i>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-gray-900">${result.site}</p>
+                                <p class="text-xs text-gray-600 truncate">${result.url}</p>
+                            </div>
+                        </div>
+                        <span class="text-sm ${result.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                            ${result.message}
+                        </span>
+                    `;
+                    document.getElementById('resultsList').appendChild(resultItem);
+                });
+
+                // Update final stats
+                document.getElementById('successCount').textContent = successCount;
+                document.getElementById('errorCount').textContent = errorCount;
+                if (data.credits !== undefined) {
+                    document.getElementById('creditsLeft').textContent = data.credits;
+                }
+
+                // Show success message
+                document.getElementById('successMessage').classList.remove('hidden');
+                document.getElementById('processBtn').disabled = false;
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error processing URLs. Please try again.');
+                document.getElementById('processBtn').disabled = false;
+            }
+        }
+
+        function exportResults() {
+            if (results.length === 0) return;
+
+            const csv = [
+                ['Site', 'URL', 'Status', 'Message'],
+                ...results.map(r => [
+                    r.site,
+                    r.url,
+                    r.status,
+                    r.message
+                ])
+            ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `speedyindex-results-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
