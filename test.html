@@ -1,1 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test SpeedyIndex Functions</title>
+</head>
+<body>
+    <h1>Test Functions</h1>
+    <button onclick="testAuth()">Test Auth Function</button>
+    <div id="result"></div>
 
+    <script>
+        async function testAuth() {
+            try {
+                const response = await fetch('/.netlify/functions/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'SpeedyAdmin2024!'
+                    })
+                });
+                
+                const text = await response.text();
+                document.getElementById('result').innerHTML = `
+                    Status: ${response.status}<br>
+                    Response: <pre>${text}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
