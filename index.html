@@ -410,81 +410,103 @@
             document.getElementById('successCount').textContent = '0';
             document.getElementById('errorCount').textContent = '0';
 
-            // Process URLs using Netlify function
-            try {
-                const response = await fetch('/.netlify/functions/process-excel', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({
-                        urls: extractedUrls
-                    })
-                });
+            // Process URLs in batches of 50
+            const batchSize = 50;
+            let totalProcessed = 0;
+            let totalSuccess = 0;
+            let totalErrors = 0;
 
-                if (response.status === 401) {
-                    alert('Session expired. Please login again.');
-                    handleLogout();
-                    return;
+            for (let batchStart = 0; batchStart < extractedUrls.length; batchStart += batchSize) {
+                const batch = extractedUrls.slice(batchStart, batchStart + batchSize);
+                
+                // Update progress text
+                document.getElementById('progressText').textContent = 
+                    `Processing batch ${Math.floor(batchStart / batchSize) + 1} of ${Math.ceil(extractedUrls.length / batchSize)}...`;
+
+                try {
+                    const response = await fetch('/.netlify/functions/process-excel', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            urls: batch
+                        })
+                    });
+
+                    if (response.status === 401) {
+                        alert('Session expired. Please login again.');
+                        handleLogout();
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error('Failed to process batch');
+                    }
+
+                    const data = await response.json();
+                    
+                    // Add batch results to overall results
+                    if (data.results) {
+                        results.push(...data.results);
+                        
+                        // Update counts
+                        data.results.forEach(result => {
+                            totalProcessed++;
+                            if (result.status === 'success') totalSuccess++;
+                            else totalErrors++;
+
+                            // Update progress
+                            const overallProgress = (totalProcessed / extractedUrls.length) * 100;
+                            document.getElementById('progressBar').style.width = `${overallProgress}%`;
+                            document.getElementById('progressPercent').textContent = `${Math.round(overallProgress)}%`;
+                            document.getElementById('progressText').textContent = 
+                                `Processed ${totalProcessed} of ${extractedUrls.length} URLs`;
+
+                            // Update counts
+                            document.getElementById('successCount').textContent = totalSuccess;
+                            document.getElementById('errorCount').textContent = totalErrors;
+
+                            // Add to results list
+                            const resultItem = document.createElement('div');
+                            resultItem.className = 'flex items-center justify-between py-2 px-3 border-b hover:bg-white rounded';
+                            resultItem.innerHTML = `
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="fas ${result.status === 'success' ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'}"></i>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium text-gray-900">${result.site}</p>
+                                        <p class="text-xs text-gray-600 truncate">${result.url}</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm ${result.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                                    ${result.message}
+                                </span>
+                            `;
+                            document.getElementById('resultsList').appendChild(resultItem);
+                        });
+
+                        // Update credits if available
+                        if (data.credits !== undefined) {
+                            document.getElementById('creditsLeft').textContent = data.credits;
+                        }
+                    }
+
+                    // Small delay between batches
+                    if (batchStart + batchSize < extractedUrls.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                } catch (error) {
+                    console.error('Error processing batch:', error);
+                    // Continue with next batch even if one fails
                 }
-
-                if (!response.ok) {
-                    throw new Error('Failed to process URLs');
-                }
-
-                const data = await response.json();
-                results = data.results;
-
-                // Update UI with results
-                let successCount = 0;
-                let errorCount = 0;
-
-                results.forEach((result, index) => {
-                    if (result.status === 'success') successCount++;
-                    else errorCount++;
-
-                    // Update progress
-                    const progress = ((index + 1) / results.length) * 100;
-                    document.getElementById('progressBar').style.width = `${progress}%`;
-                    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
-                    document.getElementById('progressText').textContent = 
-                        `Processed ${index + 1} of ${results.length} URLs`;
-
-                    // Add to results list
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'flex items-center justify-between py-2 px-3 border-b hover:bg-white rounded';
-                    resultItem.innerHTML = `
-                        <div class="flex items-center gap-2 flex-1">
-                            <i class="fas ${result.status === 'success' ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'}"></i>
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-gray-900">${result.site}</p>
-                                <p class="text-xs text-gray-600 truncate">${result.url}</p>
-                            </div>
-                        </div>
-                        <span class="text-sm ${result.status === 'success' ? 'text-green-600' : 'text-red-600'}">
-                            ${result.message}
-                        </span>
-                    `;
-                    document.getElementById('resultsList').appendChild(resultItem);
-                });
-
-                // Update final stats
-                document.getElementById('successCount').textContent = successCount;
-                document.getElementById('errorCount').textContent = errorCount;
-                if (data.credits !== undefined) {
-                    document.getElementById('creditsLeft').textContent = data.credits;
-                }
-
-                // Show success message
-                document.getElementById('successMessage').classList.remove('hidden');
-                document.getElementById('processBtn').disabled = false;
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error processing URLs. Please try again.');
-                document.getElementById('processBtn').disabled = false;
             }
+
+            // Show completion message
+            document.getElementById('progressText').textContent = 'Processing complete!';
+            document.getElementById('successMessage').classList.remove('hidden');
+            document.getElementById('processBtn').disabled = false;
         }
 
         function exportResults() {
