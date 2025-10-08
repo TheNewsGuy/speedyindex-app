@@ -1,1 +1,14 @@
-
+{
+  "name": "speedyindex-press-release-indexer",
+  "version": "1.0.0",
+  "description": "SpeedyIndex bulk URL submitter for press releases with authentication",
+  "scripts": {
+    "test": "echo \"No tests configured\""
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "crypto": "^1.0.1"
+  }
+}
