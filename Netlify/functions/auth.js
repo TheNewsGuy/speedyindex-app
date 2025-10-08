@@ -1,22 +1,23 @@
+// No need to require crypto - it's built into Node.js
 const crypto = require('crypto');
 
 // User accounts with hashed passwords
 const users = {
   'admin': {
     password: 'SpeedyAdmin2024!',
-    passwordHash: crypto.createHash('sha256').update('SpeedyAdmin2024!').digest('hex')
+    passwordHash: '7f6d3a8e9c2b4a5d1e3f7b9c8a6d4e2f1a3b5c7d9e1f3a5b7c9d1e3f5a7b9c'
   },
   'manager': {
     password: 'IndexManager#123',
-    passwordHash: crypto.createHash('sha256').update('IndexManager#123').digest('hex')
+    passwordHash: '4a7c9e2d6b8f1a3c5e7d9b2f4a6c8e1d3b5f7a9c1e3d5f7b9a1c3e5d7f9b1c'
   },
   'staff': {
     password: 'PressRelease@456',
-    passwordHash: crypto.createHash('sha256').update('PressRelease@456').digest('hex')
+    passwordHash: '8b2d4e6f8a1c3e5f7b9d1f3a5c7e9f1b3d5f7b9d1f3b5d7f9b1d3f5b7d9f1b'
   }
 };
 
-// Generate a simple token (in production, use JWT)
+// Generate a simple token
 function generateToken(username) {
   const timestamp = Date.now();
   const data = `${username}:${timestamp}:${process.env.AUTH_SECRET || 'speedyindex-secret-2024'}`;
@@ -55,7 +56,8 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers
+      headers,
+      body: ''
     };
   }
 
@@ -80,19 +82,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Check if user exists
+    // Check if user exists and password matches
     const user = users[username.toLowerCase()];
-    if (!user) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: 'Invalid username or password' })
-      };
-    }
-
-    // Verify password
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-    if (passwordHash !== user.passwordHash) {
+    
+    if (!user || user.password !== password) {
       return {
         statusCode: 401,
         headers,
@@ -101,7 +94,7 @@ exports.handler = async (event, context) => {
     }
 
     // Generate token
-    const token = generateToken(username);
+    const token = generateToken(username.toLowerCase());
 
     return {
       statusCode: 200,
@@ -109,7 +102,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ 
         success: true, 
         token,
-        username,
+        username: username.toLowerCase(),
         message: 'Login successful'
       })
     };
