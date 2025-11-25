@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeedyIndex - Press Release URL Indexer</title>
+    <title>RalfyIndex - Press Release URL Indexer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,7 +19,7 @@
             <div class="bg-white rounded-lg shadow-lg p-8">
                 <div class="text-center mb-8">
                     <i class="fas fa-rocket text-5xl text-blue-600 mb-4"></i>
-                    <h1 class="text-2xl font-bold text-gray-900">SpeedyIndex Login</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">RalfyIndex Login</h1>
                     <p class="text-gray-600 mt-2">Please login to access the URL indexer</p>
                 </div>
                 
@@ -84,7 +84,7 @@
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center">
                         <i class="fas fa-rocket text-3xl text-blue-600 mr-3"></i>
-                        <h1 class="text-3xl font-bold text-gray-900">SpeedyIndex URL Submitter</h1>
+                        <h1 class="text-3xl font-bold text-gray-900">RalfyIndex URL Submitter</h1>
                     </div>
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2 text-sm text-gray-600">
@@ -129,9 +129,9 @@
 
                 <!-- Process Button -->
                 <button id="processBtn" disabled class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                    <i class="fas fa-paper-plane"></i>
-                    <span>Submit to SpeedyIndex</span>
-                </button>
+    <i class="fas fa-paper-plane"></i>
+    <span>Submit to RalfyIndex</span>
+</button>
 
                 <!-- Progress Section -->
                 <div id="progressSection" class="hidden mt-8">
@@ -205,7 +205,7 @@
                         <ul class="space-y-1 text-sm text-gray-700">
                             <li>• Upload your press release Excel report</li>
                             <li>• URLs should be in column B</li>
-                            <li>• Click "Submit to SpeedyIndex"</li>
+                            <li>• Click "Submit to RalfyIndex"</li>
                             <li>• Export results when complete</li>
                         </ul>
                     </div>
@@ -222,8 +222,8 @@
                 
                 <div class="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
                     <p class="text-sm text-yellow-800">
-                        <strong>Support:</strong> If you encounter any issues, contact your administrator or check the SpeedyIndex dashboard for API status.
-                    </p>
+    <strong>Support:</strong> If you encounter any issues, contact your administrator or check the RalfyIndex dashboard for API status.
+</p>
                 </div>
             </div>
         </div>
@@ -240,7 +240,7 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             // Check if already logged in
-            const savedAuth = sessionStorage.getItem('speedyindex_auth');
+            const savedAuth = sessionStorage.getItem('RalfyIndex_auth');
             if (savedAuth) {
                 const authData = JSON.parse(savedAuth);
                 authToken = authData.token;
@@ -295,7 +295,7 @@
                 if (response.ok) {
                     authToken = data.token;
                     currentUsername = username;
-                    sessionStorage.setItem('speedyindex_auth', JSON.stringify({
+                    sessionStorage.setItem('RalfyIndex_auth', JSON.stringify({
                         token: authToken,
                         username: currentUsername
                     }));
@@ -314,7 +314,7 @@
         function handleLogout() {
             authToken = null;
             currentUsername = null;
-            sessionStorage.removeItem('speedyindex_auth');
+            sessionStorage.removeItem('RalfyIndex_auth');
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('username').value = '';
@@ -526,7 +526,7 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `speedyindex-results-${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `RalfyIndex-results-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
         }
     </script>
