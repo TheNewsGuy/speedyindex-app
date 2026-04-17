@@ -66,11 +66,13 @@ exports.handler = async (event) => {
 
     console.log(`User ${username} processing ${urls.length} URLs`);
 
-    // Create a task with SpeedyIndex v2
+    // Create task with SpeedyIndex v2
     const urlArray = urls.map(u => u.url);
-    const taskName = `Batch_${username}_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}`;
+    const taskName = `Batch_${username}_${Date.now()}`;
 
     try {
+      console.log('Creating SpeedyIndex task...');
+      
       // Create task
       const taskResponse = await axios.post(
         'https://api.speedyindex.com/v2/task/google/indexer/create',
@@ -84,141 +86,71 @@ exports.handler = async (event) => {
             'Authorization': SPEEDYINDEX_API_KEY,
             'Content-Type': 'application/json'
           },
-          timeout: 15000
+          timeout: 30000
         }
       );
 
-      if (taskResponse.data.code !== 0) {
+      console.log('SpeedyIndex response:', taskResponse.data);
+
+      if (taskResponse.data.code === 0) {
+        // Task created successfully
+        const taskId = taskResponse.data.task_id;
+        
+        // Mark all URLs as successfully submitted
+        const results = urls.map(({ site, url }) => ({
+          site,
+          url,
+          status: 'success',
+          message: `Submitted successfully (Task ID: ${taskId.slice(-8)})`
+        }));
+
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            total: urls.length,
+            successful: urls.length,
+            failed: 0,
+            results,
+            taskId,
+            message: 'All URLs submitted to SpeedyIndex for processing',
+            processedBy: username
+          })
+        };
+      } else {
+        // Handle API errors
         let errorMessage = 'Failed to create indexing task';
         if (taskResponse.data.code === 1) {
-          errorMessage = 'Insufficient balance';
+          errorMessage = 'Insufficient SpeedyIndex credits';
         } else if (taskResponse.data.code === 2) {
-          errorMessage = 'Validation error';
+          errorMessage = 'Invalid request - check URL format';
         }
         
+        console.error('SpeedyIndex API error:', taskResponse.data);
         throw new Error(errorMessage);
       }
 
-      const taskId = taskResponse.data.task_id;
-      console.log(`Created task: ${taskId}`);
-
-      // Wait a moment for task to initialize
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Check task status
-      let taskCompleted = false;
-      let attempts = 0;
-      let taskResult = null;
-
-      while (!taskCompleted && attempts < 30) { // Max 30 attempts (1 minute)
-        try {
-          const statusResponse = await axios.post(
-            'https://api.speedyindex.com/v2/task/google/indexer/status',
-            { task_id: taskId },
-            {
-              headers: {
-                'Authorization': SPEEDYINDEX_API_KEY,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-
-          if (statusResponse.data.code === 0 && statusResponse.data.result) {
-            taskResult = statusResponse.data.result;
-            taskCompleted = taskResult.is_completed;
-          }
-
-          if (!taskCompleted) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-            attempts++;
-          }
-        } catch (error) {
-          console.error('Status check error:', error.message);
-          break;
-        }
-      }
-
-      // Prepare results
-      const results = urls.map(({ site, url }) => ({
-        site,
-        url,
-        status: 'success',
-        message: taskCompleted 
-          ? `Task completed - Check SpeedyIndex dashboard for details`
-          : `Task created - Processing in background (Task ID: ${taskId.slice(-8)})`
-      }));
-
-      // If task completed, try to get more detailed results
-      if (taskCompleted && taskResult) {
-        try {
-          const reportResponse = await axios.post(
-            'https://api.speedyindex.com/v2/task/google/indexer/fullreport',
-            { task_id: taskId },
-            {
-              headers: {
-                'Authorization': SPEEDYINDEX_API_KEY,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-
-          if (reportResponse.data.code === 0 && reportResponse.data.result) {
-            const report = reportResponse.data.result;
-            const indexedUrls = new Set(report.indexed_links?.map(link => link.url) || []);
-            const unindexedUrls = new Set(report.unindexed_links?.map(link => link.url) || []);
-
-            // Update results with actual status
-            results.forEach(result => {
-              if (indexedUrls.has(result.url)) {
-                result.status = 'success';
-                result.message = 'Indexed successfully';
-              } else if (unindexedUrls.has(result.url)) {
-                result.status = 'error';
-                result.message = 'Failed to index';
-              }
-            });
-          }
-        } catch (error) {
-          console.error('Report fetch error:', error.message);
-        }
-      }
-
-      const successful = results.filter(r => r.status === 'success').length;
-      const failed = results.filter(r => r.status === 'error').length;
-
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          total: urls.length,
-          successful,
-          failed,
-          results,
-          taskId,
-          taskCompleted,
-          processedCount: taskResult?.processed_count || 0,
-          indexedCount: taskResult?.indexed_count || 0,
-          processedBy: username
-        })
-      };
-
     } catch (error) {
-      console.error('SpeedyIndex error:', error.response?.data || error.message);
+      console.error('SpeedyIndex request failed:', error.response?.data || error.message);
       
-      let errorMessage = 'Failed to process URLs';
-      if (error.response?.data?.code === 1) {
+      let errorMessage = 'Failed to submit to SpeedyIndex';
+      if (error.response?.status === 401) {
+        errorMessage = 'Invalid SpeedyIndex API key';
+      } else if (error.response?.status === 402) {
         errorMessage = 'Insufficient SpeedyIndex credits';
+      } else if (error.response?.data?.code === 1) {
+        errorMessage = 'Insufficient SpeedyIndex balance';
       } else if (error.response?.data?.code === 2) {
-        errorMessage = 'Invalid request format';
-      } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = 'SpeedyIndex validation error';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'SpeedyIndex request timed out - try smaller batches';
       }
 
-      // Return error results for all URLs
+      // Return error results
       const results = urls.map(({ site, url }) => ({
         site,
         url,
